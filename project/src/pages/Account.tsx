@@ -12,7 +12,7 @@ export default function Account() {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await fetch('https://zomato-production-1f03.up.railway.app/api/orders/all');
+        const response = await fetch('https://zomato-production-1e72.up.railway.app/api/orders/all');
         const data = await response.json();
         
         if (Array.isArray(data)) {

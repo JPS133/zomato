@@ -19,7 +19,7 @@ export default function AddFood() {
   });
 
   useEffect(() => {
-    fetch('https://zomato-production-1f03.up.railway.app/api/restraunt/all')
+    fetch('https://zomato-production-1e72.up.railway.app/api/restraunt/all')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setRestaurants(data);
@@ -40,7 +40,7 @@ export default function AddFood() {
         restrauntId: parseInt(formData.restrauntId)
       };
 
-      const response = await fetch('https://zomato-production-1f03.up.railway.app/api/food', {
+      const response = await fetch('https://zomato-production-1e72.up.railway.app/api/food', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

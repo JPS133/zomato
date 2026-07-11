@@ -14,8 +14,8 @@ export default function RestaurantDetail() {
 
   useEffect(() => {
     Promise.all([
-      fetch('https://zomato-production-1f03.up.railway.app/api/restraunt/all').then(res => res.json()),
-      fetch('https://zomato-production-1f03.up.railway.app/api/food').then(res => res.json()) 
+      fetch('https://zomato-production-1e72.up.railway.app/api/restraunt/all').then(res => res.json()),
+      fetch('https://zomato-production-1e72.up.railway.app/api/food').then(res => res.json()) 
     ])
     .then(([restaurantsData, foodsData]) => {
       const currentRes = restaurantsData.find((r: any) => r.id.toString() === id);

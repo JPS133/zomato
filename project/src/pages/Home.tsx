@@ -15,7 +15,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('https://zomato-production-1f03.up.railway.app/api/restraunt/all')
+    fetch('https://zomato-production-1e72.up.railway.app/api/restraunt/all')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setLiveRestaurants(data);
