@@ -7,9 +7,10 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "start": "node seed.js && node Server.js",
-    "dev": "nodemon Server.js"
-  },
+  "start": "node Server.js",
+  "dev": "nodemon Server.js",
+  "seed": "node seed.js"
+},
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
