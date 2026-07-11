@@ -17,6 +17,7 @@ import UserData from './Admin/UserData';
 import OrderDetails from './pages/OrderDetails';
 import AddFood from './Admin/AddFood';
 import AdminLogin from './Admin/AdminLogin';
+import AdminProtectedRoute from "./Admin/AdminProtectedRoute";
 
 export default function App() {
   return (
@@ -51,9 +52,23 @@ export default function App() {
             
             <Route path="/admin" element={<AdminLogin />} />
 
-<Route path="/admin/users" element={<UserData />} />
+<Route
+  path="/admin/users"
+  element={
+    <AdminProtectedRoute>
+      <UserData />
+    </AdminProtectedRoute>
+  }
+/>
 
-<Route path="/admin/addFood" element={<AddFood />} /> 
+<Route
+  path="/admin/addFood"
+  element={
+    <AdminProtectedRoute>
+      <AddFood />
+    </AdminProtectedRoute>
+  }
+/> 
           </Routes>
         </CartProvider>
       </AuthProvider>
