@@ -14,7 +14,17 @@ const PaymentRoutes = require('./Routes/PaymentRoutes');
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://zomato-8064.onrender.com"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true,
+}));
+
+app.options("*", cors());
+
 app.use(express.json());
 
 app.use('/api/users', UserRoutes);
