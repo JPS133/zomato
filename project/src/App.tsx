@@ -16,6 +16,7 @@ import ProtectRoutes from './ProtectRoutes';
 import UserData from './Admin/UserData';
 import OrderDetails from './pages/OrderDetails';
 import AddFood from './Admin/AddFood';
+import AdminLogin from './Admin/AdminLogin';
 
 export default function App() {
   return (
@@ -48,8 +49,11 @@ export default function App() {
               <Route path="*" element={<NotFound />} />
             </Route>
             
-            <Route path="/admin" element={<UserData />} />
-            <Route path="/admin/addFood" element={<AddFood />} /> 
+            <Route path="/admin" element={<AdminLogin />} />
+
+<Route path="/admin/users" element={<UserData />} />
+
+<Route path="/admin/addFood" element={<AddFood />} /> 
           </Routes>
         </CartProvider>
       </AuthProvider>
