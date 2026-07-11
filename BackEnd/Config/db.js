@@ -1,6 +1,12 @@
+require('dotenv').config();
 const { Sequelize } = require('sequelize');
 
-const db = new Sequelize('mysql://root:uOjetjwcsZnKJIrbSVQzSNBzbZkgzeLH@tokaido.proxy.rlwy.net:51870/railway', {
+if (!process.env.DATABASE_URL) {
+    console.error('FATAL: DATABASE_URL is not set. Create a .env file (see .env.example).');
+    process.exit(1);
+}
+
+const db = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'mysql',
     logging: false
 });
