@@ -3,16 +3,21 @@ import { useState } from 'react';
 import { Plus, Minus, Trash2, ShoppingBag, ArrowLeft, IndianRupee, MapPin, Tag, Check, Copy } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import { apiJson } from '../lib/api';
+import { loadRazorpayScript, openRazorpayCheckout, type RazorpayOrderResponse } from '../lib/razorpay';
 
 export default function Cart() {
   const { items, updateQuantity, removeItem, clearCart, totalPrice, totalItems } = useCart();
   const { user } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [isPlacing, setIsPlacing] = useState(false);
+  const [placingStage, setPlacingStage] = useState<'payment' | 'placing' | null>(null);
   const [copied, setCopied] = useState(false);
   const [finalOrder, setFinalOrder] = useState({ id: '', total: 0, items: 0 });
 
@@ -35,32 +40,55 @@ export default function Cart() {
 
     setIsPlacing(true);
     const newOrderId = Date.now().toString().slice(-6);
-    
+
     try {
-      const response = await fetch('https://zomato-production-1e72.up.railway.app/api/orders', {
+      // 1. Ask our backend to open a Razorpay order for this cart total.
+      setPlacingStage('payment');
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error('Unable to load payment gateway. Check your connection and try again.');
+      }
+
+      const paymentOrder = await apiJson<RazorpayOrderResponse>('/api/payments/create-order', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        body: JSON.stringify({ amount: grandTotal }),
+      });
+
+      // 2. Open Razorpay Checkout and wait for the user to complete payment.
+      const payment = await openRazorpayCheckout(paymentOrder, {
+        name: 'Zomato',
+        description: items[0]?.restaurantName ? `Order from ${items[0].restaurantName}` : 'Food order',
+        contact: user.number,
+      });
+
+      // 3. Only now place the actual order, passing along the payment proof.
+      // The backend independently re-verifies the signature before saving —
+      // this call succeeding server-side is what actually marks it paid.
+      setPlacingStage('placing');
+      await apiJson('/api/orders', {
+        method: 'POST',
         body: JSON.stringify({
           Orderid: newOrderId,
           number: user.number,
           totalAmount: grandTotal,
           restrauntName: items[0]?.restaurantName || 'Zomato Restaurant',
+          restrauntId: items[0]?.restaurantId,
           orderedItems: items.map(ci => ({ name: ci.item.name, quantity: ci.quantity })),
-          ItemPrices: items.map(ci => ({ name: ci.item.name, price: ci.item.price * ci.quantity }))
+          ItemPrices: items.map(ci => ({ name: ci.item.name, price: ci.item.price * ci.quantity })),
+          razorpay_order_id: payment.razorpay_order_id,
+          razorpay_payment_id: payment.razorpay_payment_id,
+          razorpay_signature: payment.razorpay_signature,
         }),
       });
 
-      if (response.ok) {
-        setFinalOrder({ id: newOrderId, total: grandTotal, items: totalItems });
-        setOrderPlaced(true);
-        clearCart();
-      }
-    } catch (error) {
-      console.error(error);
+      setFinalOrder({ id: newOrderId, total: grandTotal, items: totalItems });
+      setOrderPlaced(true);
+      clearCart();
+    } catch (error: any) {
+      showToast(error.message || 'Failed to place order. Please try again.', 'error');
     } finally {
       setIsPlacing(false);
+      setPlacingStage(null);
     }
   };
 
@@ -263,11 +291,13 @@ export default function Cart() {
                 className="w-full mt-6 bg-zomato-red text-white font-bold py-3.5 rounded-xl hover:bg-zomato-red-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-75"
               >
                 {isPlacing ? (
-                  <span className="animate-pulse">Placing Order...</span>
+                  <span className="animate-pulse">
+                    {placingStage === 'payment' ? 'Waiting for payment...' : 'Placing order...'}
+                  </span>
                 ) : (
                   <>
                     <IndianRupee className="w-5 h-5" />
-                    Place Order · ₹{grandTotal}
+                    Pay & Place Order · ₹{grandTotal}
                   </>
                 )}
               </button>

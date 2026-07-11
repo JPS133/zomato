@@ -1,23 +1,53 @@
+/** @jsxRuntime classic */
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Heart, MapPin, CreditCard, Bell, HelpCircle, LogOut, ChevronRight, Package, Gift } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import {
+  User,
+  Heart,
+  MapPin,
+  CreditCard,
+  Bell,
+  HelpCircle,
+  LogOut,
+  ChevronRight,
+  Package,
+  Gift,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { apiJson } from '../lib/api';
+
+type OrderStatus = 'placed' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled';
+
+interface Order {
+  Orderid: string | number;
+  status?: OrderStatus | string;
+  restrauntName?: string;
+  createdAt?: string;
+  orderedItems?: string | Array<{ name?: string; quantity?: number }> | any;
+  totalAmount?: number;
+}
+
+const STATUS_BADGE_STYLES: Record<OrderStatus, string> = {
+  placed: 'bg-blue-100 text-blue-800',
+  preparing: 'bg-yellow-100 text-yellow-800',
+  ready: 'bg-purple-100 text-purple-800',
+  out_for_delivery: 'bg-indigo-100 text-indigo-800',
+  delivered: 'bg-green-100 text-green-700',
+  cancelled: 'bg-gray-200 text-gray-700',
+};
 
 export default function Account() {
   const [activeTab, setActiveTab] = useState('orders');
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await fetch('https://zomato-production-1e72.up.railway.app/api/orders/all');
-        const data = await response.json();
-        
+        const data = await apiJson<Order[]>('/api/orders/mine');
         if (Array.isArray(data)) {
-          const userOrders = data.filter((o: any) => o.number === user?.number);
-          setOrders(userOrders.reverse());
+          setOrders([...data].reverse());
         }
       } catch (error) {
         console.error('Failed to fetch orders:', error);
@@ -27,7 +57,7 @@ export default function Account() {
     if (user?.number) {
       fetchOrders();
     }
-  }, [user]);
+  }, [user?.number]);
 
   const handleLogout = () => {
     logout();
@@ -42,16 +72,35 @@ export default function Account() {
     { id: 'notifications', icon: Bell, label: 'Notifications', desc: 'Manage your alerts' },
     { id: 'rewards', icon: Gift, label: 'Zomato Gold', desc: 'Your membership benefits' },
     { id: 'help', icon: HelpCircle, label: 'Help & Support', desc: 'Get help with your orders' },
+    { id: 'profile', icon: User, label: 'Profile', desc: 'Manage your account info' },
   ];
 
-  const renderItems = (itemsData: any) => {
+  const renderItems = (itemsData: Order['orderedItems']) => {
     if (!itemsData) return null;
-    try {
-      const parsed = typeof itemsData === 'string' ? JSON.parse(itemsData) : itemsData;
-      return parsed.map((i: any) => `${i.name} x${i.quantity}`).join(', ');
-    } catch (e) {
-      return null;
+
+    if (Array.isArray(itemsData)) {
+      return itemsData
+        .map((item) => `${item?.name || 'Item'} x${item?.quantity ?? 1}`)
+        .join(', ');
     }
+
+    if (typeof itemsData === 'string') {
+      try {
+        const parsed = JSON.parse(itemsData);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item: any) => `${item?.name || 'Item'} x${item?.quantity ?? 1}`).join(', ');
+        }
+      } catch {
+        return itemsData;
+      }
+    }
+
+    return String(itemsData);
+  };
+
+  const formatOrderDate = (createdAt?: string) => {
+    const date = createdAt ? new Date(createdAt) : null;
+    return date ? date.toLocaleString() : 'Unknown date';
   };
 
   return (
@@ -62,8 +111,8 @@ export default function Account() {
             {user?.name?.charAt(0).toUpperCase() || 'U'}
           </div>
           <div>
-            <h1 className="text-2xl font-bold">{user?.name}</h1>
-            <p className="text-white/80 text-sm mt-1">+91 {user?.number}</p>
+            <h1 className="text-2xl font-bold">{user?.name || 'User'}</h1>
+            <p className="text-white/80 text-sm mt-1">+91 {user?.number || '0000000000'}</p>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/20">
@@ -92,10 +141,13 @@ export default function Account() {
                 className={`w-full flex items-center gap-4 p-4 text-left hover:bg-gray-50 transition-colors ${
                   idx !== menuItems.length - 1 ? 'border-b border-gray-100' : ''
                 } ${activeTab === item.id ? 'bg-red-50' : ''}`}
+                type="button"
               >
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                  activeTab === item.id ? 'bg-zomato-red text-white' : 'bg-gray-100 text-gray-600'
-                }`}>
+                <div
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    activeTab === item.id ? 'bg-zomato-red text-white' : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
                   <item.icon className="w-5 h-5" />
                 </div>
                 <div className="flex-1">
@@ -105,9 +157,10 @@ export default function Account() {
                 <ChevronRight className="w-4 h-4 text-gray-400" />
               </button>
             ))}
-            <button 
+            <button
               onClick={handleLogout}
               className="w-full flex items-center gap-4 p-4 text-left hover:bg-gray-50 transition-colors text-zomato-red"
+              type="button"
             >
               <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
                 <LogOut className="w-5 h-5" />
@@ -129,34 +182,46 @@ export default function Account() {
                     No recent orders found.
                   </div>
                 ) : (
-                  orders.map((order) => (
-                    <div key={order.Orderid} className="bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h3 className="font-bold text-gray-900 text-lg">
-                            {order.restrauntName || 'Restaurant Order'}
-                          </h3>
-                          <p className="text-sm text-gray-500 mt-0.5">
-                            Order #{order.Orderid} • {new Date(order.createdAt).toLocaleString()}
-                          </p>
-                          {order.orderedItems && (
-                            <p className="text-sm text-gray-600 mt-2 line-clamp-1">
-                              {renderItems(order.orderedItems)}
+                  orders.map((order) => {
+                    const status = order.status || 'placed';
+                    const badgeStyle = STATUS_BADGE_STYLES[status as OrderStatus] || STATUS_BADGE_STYLES.placed;
+                    return (
+                      <div
+                        key={order.Orderid}
+                        className="bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h3 className="font-bold text-gray-900 text-lg">
+                              {order.restrauntName || 'Restaurant Order'}
+                            </h3>
+                            <p className="text-sm text-gray-500 mt-0.5">
+                              Order #{order.Orderid} • {formatOrderDate(order.createdAt)}
                             </p>
-                          )}
+                            {order.orderedItems && (
+                              <p className="text-sm text-gray-600 mt-2 line-clamp-1">
+                                {renderItems(order.orderedItems)}
+                              </p>
+                            )}
+                          </div>
+                          <span
+                            className={`capitalize text-xs font-medium px-3 py-1 rounded-full shrink-0 ${badgeStyle}`}
+                          >
+                            {status.replace(/_/g, ' ')}
+                          </span>
                         </div>
-                        <span className="bg-green-100 text-green-700 text-xs font-medium px-3 py-1 rounded-full shrink-0">
-                          Delivered
-                        </span>
+                        <div className="flex items-center justify-between pt-4 mt-2 border-t border-gray-100">
+                          <span className="font-bold text-gray-900 text-lg">₹{order.totalAmount ?? 0}</span>
+                          <Link
+                            to={`/order/${order.Orderid}`}
+                            className="text-sm text-white bg-zomato-red font-medium px-4 py-2 rounded-lg hover:bg-zomato-red-dark transition-colors"
+                          >
+                            View Details
+                          </Link>
+                        </div>
                       </div>
-                      <div className="flex items-center justify-between pt-4 mt-2 border-t border-gray-100">
-                        <span className="font-bold text-gray-900 text-lg">₹{order.totalAmount}</span>
-                        <Link to={`/order/${order.Orderid}`} className="text-sm text-white bg-zomato-red font-medium px-4 py-2 rounded-lg hover:bg-zomato-red-dark transition-colors">
-                          View Details
-                        </Link>
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -177,7 +242,7 @@ export default function Account() {
             <div>
               <h2 className="text-xl font-bold text-gray-900 mb-4">Saved Addresses</h2>
               <div className="space-y-4">
-                <button className="w-full border-2 border-dashed border-gray-200 rounded-2xl p-5 text-gray-500 hover:border-zomato-red hover:text-zomato-red transition-colors">
+                <button className="w-full border-2 border-dashed border-gray-200 rounded-2xl p-5 text-gray-500 hover:border-zomato-red hover:text-zomato-red transition-colors" type="button">
                   + Add new address
                 </button>
               </div>
@@ -188,7 +253,7 @@ export default function Account() {
             <div>
               <h2 className="text-xl font-bold text-gray-900 mb-4">Payment Methods</h2>
               <div className="space-y-4">
-                <button className="w-full border-2 border-dashed border-gray-200 rounded-2xl p-5 text-gray-500 hover:border-zomato-red hover:text-zomato-red transition-colors">
+                <button className="w-full border-2 border-dashed border-gray-200 rounded-2xl p-5 text-gray-500 hover:border-zomato-red hover:text-zomato-red transition-colors" type="button">
                   + Add payment method
                 </button>
               </div>
