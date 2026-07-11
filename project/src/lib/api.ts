@@ -1,6 +1,6 @@
 
 export const API_URL =
-  (import.meta as any).env?.VITE_API_URL || 'https://zomato-production-1e72.up.railway.app';
+  (import.meta as any).env?.VITE_API_URL || 'https://zomato-production-71f1.up.railway.app';
 
 function getToken(): string | null {
   try {
